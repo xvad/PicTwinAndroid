@@ -48,15 +48,12 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * Pagina principal.
  *
- * @author Diego P. Urrutia Astorga
+ * @author Victor Araya Delgado
  * @version 20151022
  */
 @Slf4j
-public class MainActivity extends AppCompatActivity/*ListActivity*/ {
+public class MainActivity extends AppCompatActivity {
 
-    /**
-     * Barrita de progreso en caso que la lista este vacia
-     */
     @BindView(R.id.progressBar)
     ProgressBar progressBar;
 
@@ -185,23 +182,6 @@ public class MainActivity extends AppCompatActivity/*ListActivity*/ {
             final ImageListAdapter adapter = new ImageListAdapter(this, arrayTwin);
             dataList.setAdapter(adapter);
 
-            dataList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                @Override
-                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                    Log.e("click position ", "" );
-
-                    switch (view.getId()) {
-                        case R.id.imageLocal:
-                            Log.e("click position ", "" + position);
-                            break;
-                        case R.id.imageRemota:
-                            Log.e("click position ", "" + position);
-                            break;
-                    }
-
-                }
-            });
-
         }
     }
 
@@ -263,6 +243,7 @@ public class MainActivity extends AppCompatActivity/*ListActivity*/ {
             }
 
         }
+
         return salida;
     }
 

@@ -95,7 +95,9 @@ dependencies {
     compile('com.github.tony19:logback-android-classic:1.1.1-6') {
         exclude group: 'com.google.android'
     }
-
+    //Servicio web
+    compile 'com.android.volley:volley:1.0.0'
+    compile 'com.google.android.gms:play-services-appindexing:9.0.1'
 
 
 }

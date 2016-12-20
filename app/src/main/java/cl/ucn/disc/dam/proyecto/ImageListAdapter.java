@@ -82,6 +82,7 @@ public class ImageListAdapter extends BaseAdapter {
         File file2 = new File(path2[1]);
         Uri pic2= Uri.fromFile(file2);
 
+        //Picasso para redimensionar la imagen
         Picasso
                 .with(this.activity)
                 .load(pic1)
@@ -98,12 +99,24 @@ public class ImageListAdapter extends BaseAdapter {
                 .transform(new CircleTransform())
                 .into(imageDerecha);
 
+        //Si se presiona la imagen de la izquierda
         imageIzquerda.setOnClickListener(new View.OnClickListener() {
 
             @Override
             public void onClick(View v) {
-                Log.e("id pic",toString().valueOf(getItem(position).getLocal().getId()));
+                Log.e("FECHAAAAAAAAA",toString().valueOf(getItem(position).getLocal().getDate()));
+
                 verImagen(getItem(position).getLocal());
+            }
+        });
+
+        //Si se presiona la imagen de la derecha
+        imageDerecha.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                Log.e("id pic",toString().valueOf(getItem(position).getRemote().getId()));
+                verImagen(getItem(position).getRemote());
             }
         });
 
@@ -111,11 +124,17 @@ public class ImageListAdapter extends BaseAdapter {
         return row;
     }
     /*
-    Metodod encrgado de enviar los datos de la imagen a un nuevo Activity
+    Metodo encrgado de enviar los datos de la imagen a un nuevo Activity
      */
     public void verImagen(Pic pic){
-        Intent intent = new Intent(this.activity, Imagen.class);
+        Intent intent = new Intent(this.activity, ImagenActivity.class);
         intent.putExtra("url",pic.getUrl());
+        intent.putExtra("date",pic.getDate());
+        intent.putExtra("latitude",pic.getLatitude());
+        intent.putExtra("longitude", pic.getLongitude());
+        intent.putExtra("positive",pic.getPositive());
+        intent.putExtra("negative", pic.getNegative());
+        intent.putExtra("warning", pic.getWarning());
         activity.startActivity(intent);
     }
 
