@@ -14,6 +14,9 @@ public class ImagenActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_imagen);
+
+        final String ipUrl = "http://192.168.0.3";
+
         //Inicializamos
         TextView textFecha = (TextView) findViewById(R.id.textFecha);
         TextView textLatitud = (TextView) findViewById(R.id.textLatitud);

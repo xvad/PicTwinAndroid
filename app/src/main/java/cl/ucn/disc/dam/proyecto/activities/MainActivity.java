@@ -2,6 +2,8 @@ package cl.ucn.disc.dam.proyecto.activities;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
@@ -13,6 +15,7 @@ import android.provider.MediaStore;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Base64;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -28,6 +31,17 @@ import cl.ucn.disc.dam.proyecto.R;
 import cl.ucn.disc.dam.proyecto.domain.Pic;
 import cl.ucn.disc.dam.proyecto.domain.Twin;
 import cl.ucn.disc.dam.proyecto.util.DeviceUtils;
+
+import com.android.volley.AuthFailureError;
+import com.android.volley.NetworkResponse;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.VolleyLog;
+import com.android.volley.toolbox.HttpHeaderParser;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
 import com.raizlabs.android.dbflow.config.FlowConfig;
 import com.raizlabs.android.dbflow.config.FlowManager;
 import com.raizlabs.android.dbflow.sql.language.SQLite;
@@ -35,10 +49,13 @@ import com.raizlabs.android.dbflow.sql.language.SQLite;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 
 import butterknife.BindView;
@@ -53,7 +70,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public class MainActivity extends AppCompatActivity {
-
+    final String ipUrl = "http://192.168.0.3";
     @BindView(R.id.progressBar)
     ProgressBar progressBar;
 
@@ -90,19 +107,13 @@ public class MainActivity extends AppCompatActivity {
                 cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, getUriPicture());
                 startActivityForResult(cameraIntent, CAMERA_REQUEST);
 
+
                 String deviceID = DeviceUtils.getDeviceId(getApplicationContext());
                 Long date = getDate();
                 Double[] latlon = getPosicion();
                 Double latitud = latlon [0];
                 Double longitud = latlon[1];
 
-                {
-                    FlowManager.init(new FlowConfig.Builder(getApplicationContext())
-                            .openDatabasesOnInit(true)
-                            .build());
-
-                    log.debug("DB initialized ");
-                }
 
 
                 Pic pic = Pic.builder()
@@ -115,13 +126,15 @@ public class MainActivity extends AppCompatActivity {
                         .negative(0)
                         .warning(0)
                         .build();
-                        log.debug("Se creo el pic");
+                log.debug("Se creo el pic");
 
                 //commit
                 pic.save();
 
+                List<Pic> pics = SQLite.select().from(Pic.class).queryList();
+                Pic pic1 =pics.get((int)(Math.random()*(pics.size()+1)));
 
-                Pic pic1 = Pic.builder()
+                /*Pic pic1 = Pic.builder()
                         .deviceId(deviceID)
                         .latitude(latitud)
                         .longitude(longitud)
@@ -131,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
                         .date(date)
                         .url(getUriPicture().toString())
                         .build();
-                pic1.save();
+                pic1.save();*/
 
                 Twin nue = Twin.builder()
                         .local(pic)
@@ -140,6 +153,7 @@ public class MainActivity extends AppCompatActivity {
 
                 nue.save();
                 log.debug("Se agregó el twin a la DB");
+
 
 
             }
@@ -165,16 +179,19 @@ public class MainActivity extends AppCompatActivity {
         }
         {
 
-            List<Twin> twins = SQLite.select().
-                    from(Twin.class).queryList();
+            //Retornamos la lista de twins
+            List<Twin> twins = SQLite.select().from(Twin.class).queryList();
 
             for(int i = twins.size()-1; i >= 0 ; i--){
-                String log = "ID:" + twins.get(i).getLocal().getId() + " date: "+twins.get(i).getLocal().getDate()
+
+                //Vemos si realmente tiene el pic
+                /*String log = "ID:" + twins.get(i).getLocal().getId() + " date: "+twins.get(i).getLocal().getDate()
                         + " ,Image: " + twins.get(i).getLocal().getUrl();
 
-                // Writing Contacts to log
+
                 Log.d("Result: ", log);
-                // add contacts data in arrayList
+                */
+                // Vamos agregando al Twin
                 arrayTwin.add(twins.get(i));
 
             }
@@ -265,7 +282,7 @@ public class MainActivity extends AppCompatActivity {
 
         SimpleDateFormat date = new SimpleDateFormat("yyyyMMdd_HHmmss");
         String timeStamp = date.format(new Date());
-        return "PicTwin"+timeStamp+".jpg";
+        return "Pic"+timeStamp+".jpg";
 
     }
 
@@ -277,14 +294,84 @@ public class MainActivity extends AppCompatActivity {
      */
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
         if(resultCode == RESULT_OK){
             if (requestCode == CAMERA_REQUEST){
-
+//                postPic(ipUrl);
             }
         }
 
+
+    }
+
+    /*
+    *Metodo que envia un pic al servidor
+   */
+    private void postPic(String url){
+
+        url = url + "/insertar/pic";
+        log.debug(url);
+
+        RequestQueue requestQueue = Volley.newRequestQueue(this);
+
+        //Image full size
+        Bitmap bm = BitmapFactory.decodeFile(getUriPicture().getPath());
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        bm.compress(Bitmap.CompressFormat.JPEG, 70, baos);
+        byte[] file = baos.toByteArray();
+        String image = Base64.encodeToString(file,Base64.DEFAULT);
+
+        Double[] latlon = getPosicion();
+        Double latitud = latlon [0];
+        Double longitud = latlon[1];
+        try {
+            JSONObject jsonBody = new JSONObject();
+            jsonBody.put("idDevice", DeviceUtils.getDeviceId(getApplicationContext()));
+            jsonBody.put("url", getUriPicture().toString());
+            jsonBody.put("date", getDate());
+            jsonBody.put("latitude",latitud);
+            jsonBody.put("longitude",longitud);
+            jsonBody.put("imagen",image);
+
+
+            final String mRequestBody = jsonBody.toString();
+            StringRequest stringRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
+                @Override
+                public void onResponse(String response) {
+                    Log.i("VOLLEY", response);
+                    log.debug(response.substring(0,2));
+                    log.debug(response.toString());
+                }
+            }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    Log.e("VOLLEY", error.toString());
+                }
+            }) {
+                @Override
+                public byte[] getBody() throws AuthFailureError {
+                    try {
+                        return mRequestBody == null ? null : mRequestBody.getBytes("utf-8");
+                    } catch (UnsupportedEncodingException uee) {
+                        VolleyLog.wtf("Unsupported Encoding while trying to get the bytes of %s using %s", mRequestBody, "utf-8");
+                        return null;
+                    }
+                }
+
+                @Override
+                protected Response<String> parseNetworkResponse(NetworkResponse response) {
+                    String responseString = "";
+                    if (response != null) {
+                        responseString = String.valueOf(response.statusCode);
+                        // can get more details such as response.headers
+                    }
+                    return Response.success(responseString, HttpHeaderParser.parseCacheHeaders(response));
+                }
+            };
+
+            requestQueue.add(stringRequest);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
 
     }
 
