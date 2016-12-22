@@ -89,6 +89,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
 
+        actualizarImagenes();
+
         //boton flotante
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -111,9 +113,8 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    @Override
-    protected void onStart() {
-        super.onStart();
+
+    public void actualizarImagenes(){
         ArrayList<Twin> arrayTwin = new ArrayList<>();
         //Retornamos la lista de twins
         List<Twin> twins = SQLite.select().from(Twin.class).queryList();
@@ -126,8 +127,7 @@ public class MainActivity extends AppCompatActivity {
         //instanciamos el adapter para agregarle el array de pic
         final ImageListAdapter adapter = new ImageListAdapter(this, arrayTwin);
         dataList.setAdapter(adapter);
-
-        }
+    }
 
     /**
      * Metodo que retirna un array con la latitud y longitud
@@ -296,6 +296,7 @@ public class MainActivity extends AppCompatActivity {
                             .build();
 
                     twin.save();
+                    actualizarImagenes();
                 }
 
                 @Override
