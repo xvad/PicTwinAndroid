@@ -52,4 +52,5 @@ public class Twin extends BaseModel {
     @Column
     Pic remote;
 
+
 }

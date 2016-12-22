@@ -97,4 +97,10 @@ public class Pic extends BaseModel {
     @Getter
     Integer warning;
 
+    /**
+     * Imagen full size
+     */
+    @Column
+    @Getter
+    String imagen;
 }

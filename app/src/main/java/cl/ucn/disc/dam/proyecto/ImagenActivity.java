@@ -15,8 +15,6 @@ public class ImagenActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_imagen);
 
-        final String ipUrl = "http://192.168.0.3";
-
         //Inicializamos
         TextView textFecha = (TextView) findViewById(R.id.textFecha);
         TextView textLatitud = (TextView) findViewById(R.id.textLatitud);
@@ -36,8 +34,11 @@ public class ImagenActivity extends AppCompatActivity {
         textPositive.setText("("+bundle.getInt("positive")+")");
         textNegative.setText("("+bundle.getInt("negative")+")");
         textWarning.setText("("+bundle.getInt("warning")+")");
+
+        //Mostramos la imagen seleccionada un poco más grande
         Picasso.with(this)
                 .load(bundle.getString("url"))
+                .rotate(90)
                 .resize(600,600)
                 .centerCrop()
                 .into(imagen);

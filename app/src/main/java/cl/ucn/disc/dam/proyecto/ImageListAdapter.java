@@ -74,18 +74,14 @@ public class ImageListAdapter extends BaseAdapter {
         final ImageButton imageIzquerda = (ImageButton)row.findViewById(R.id.imageLocal);
         final ImageButton imageDerecha = (ImageButton)row.findViewById(R.id.imageRemota);
 
-        String[] path1 = picLocal.getUrl().split("file://");
-        String[] path2 = picRemoto.getUrl().split("file://");
-        File file1 = new File(path1[1]);
-        Uri pic1= Uri.fromFile(file1);
+        Log.d("URL DEL PIC LOCAL",picLocal.getUrl());
 
-        File file2 = new File(path2[1]);
-        Uri pic2= Uri.fromFile(file2);
 
         //Picasso para redimensionar la imagen
         Picasso
                 .with(this.activity)
-                .load(pic1)
+                .load("http://192.168.43.188:8181/"+picLocal.getUrl())
+                .rotate(90)
                 .resize(200,200)
                 .centerCrop()
                 .transform(new CircleTransform())
@@ -93,7 +89,8 @@ public class ImageListAdapter extends BaseAdapter {
 
         Picasso
                 .with(this.activity)
-                .load(pic2)
+                .load("http://192.168.43.188:8181/"+picRemoto.getUrl())
+                .rotate(90)
                 .resize(200,200)
                 .centerCrop()
                 .transform(new CircleTransform())
@@ -104,7 +101,7 @@ public class ImageListAdapter extends BaseAdapter {
 
             @Override
             public void onClick(View v) {
-                Log.e("FECHAAAAAAAAA",toString().valueOf(getItem(position).getLocal().getDate()));
+                Log.e("FECHAA",toString().valueOf(getItem(position).getLocal().getDate()));
 
                 verImagen(getItem(position).getLocal());
             }
@@ -124,11 +121,11 @@ public class ImageListAdapter extends BaseAdapter {
         return row;
     }
     /*
-    Metodo encrgado de enviar los datos de la imagen a un nuevo Activity
+    Metodo encargado de enviar los datos de la imagen a un nuevo Activity
      */
     public void verImagen(Pic pic){
         Intent intent = new Intent(this.activity, ImagenActivity.class);
-        intent.putExtra("url",pic.getUrl());
+        intent.putExtra("url","http://192.168.43.188:8181/"+pic.getUrl());
         intent.putExtra("date",pic.getDate());
         intent.putExtra("latitude",pic.getLatitude());
         intent.putExtra("longitude", pic.getLongitude());

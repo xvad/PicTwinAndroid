@@ -8,6 +8,7 @@ import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -19,48 +20,35 @@ import android.util.Base64;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
-import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.support.v7.widget.Toolbar;
 
 import cl.ucn.disc.dam.proyecto.ImageListAdapter;
 import cl.ucn.disc.dam.proyecto.R;
+import cl.ucn.disc.dam.proyecto.WebService;
 import cl.ucn.disc.dam.proyecto.domain.Pic;
 import cl.ucn.disc.dam.proyecto.domain.Twin;
 import cl.ucn.disc.dam.proyecto.util.DeviceUtils;
 
-import com.android.volley.AuthFailureError;
-import com.android.volley.NetworkResponse;
-import com.android.volley.Request;
-import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.VolleyLog;
-import com.android.volley.toolbox.HttpHeaderParser;
-import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
 import com.raizlabs.android.dbflow.config.FlowConfig;
 import com.raizlabs.android.dbflow.config.FlowManager;
 import com.raizlabs.android.dbflow.sql.language.SQLite;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import lombok.extern.slf4j.Slf4j;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 /**
  * Pagina principal.
@@ -70,9 +58,8 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public class MainActivity extends AppCompatActivity {
-    final String ipUrl = "http://192.168.0.3";
-    @BindView(R.id.progressBar)
-    ProgressBar progressBar;
+
+    String path = "";
 
     @BindView(R.id.toolbar)
     Toolbar toolbar;
@@ -80,9 +67,9 @@ public class MainActivity extends AppCompatActivity {
     @BindView(R.id.list)
     ListView dataList;
 
-    private boolean camera;
-
     private static final int CAMERA_REQUEST = 1;
+
+
     /**
      * @param savedInstanceState
      */
@@ -94,6 +81,13 @@ public class MainActivity extends AppCompatActivity {
         // Cuchillo con mantequilla !
         ButterKnife.bind(this);
 
+        //inicializacion de la base de datos
+        {
+            FlowManager.init(new FlowConfig.Builder(getApplicationContext())
+                    .openDatabasesOnInit(true)
+                    .build());
+        }
+
 
         //boton flotante
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
@@ -102,58 +96,14 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
                 Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
                         .setAction("Action", null).show();
+                File pictureDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+                String pictureName = getPictureName();
+                File imageFile = new File(pictureDirectory, pictureName);
+                path = Uri.fromFile(imageFile).getPath();
 
                 Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, getUriPicture());
+                cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(imageFile));
                 startActivityForResult(cameraIntent, CAMERA_REQUEST);
-
-
-                String deviceID = DeviceUtils.getDeviceId(getApplicationContext());
-                Long date = getDate();
-                Double[] latlon = getPosicion();
-                Double latitud = latlon [0];
-                Double longitud = latlon[1];
-
-
-
-                Pic pic = Pic.builder()
-                        .deviceId(deviceID)
-                        .latitude(latitud)
-                        .longitude(longitud)
-                        .date(date)
-                        .url(getUriPicture().toString())
-                        .positive(0)
-                        .negative(0)
-                        .warning(0)
-                        .build();
-                log.debug("Se creo el pic");
-
-                //commit
-                pic.save();
-
-                List<Pic> pics = SQLite.select().from(Pic.class).queryList();
-                Pic pic1 =pics.get((int)(Math.random()*(pics.size()+1)));
-
-                /*Pic pic1 = Pic.builder()
-                        .deviceId(deviceID)
-                        .latitude(latitud)
-                        .longitude(longitud)
-                        .negative(0)
-                        .positive(0)
-                        .warning(0)
-                        .date(date)
-                        .url(getUriPicture().toString())
-                        .build();
-                pic1.save();*/
-
-                Twin nue = Twin.builder()
-                        .local(pic)
-                        .remote(pic1)
-                        .build();
-
-                nue.save();
-                log.debug("Se agregó el twin a la DB");
-
 
 
             }
@@ -161,49 +111,26 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    public Uri getUriPicture(){
-        File pictureDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
-        String pictureName = getPictureName();
-        File imageFile = new File(pictureDirectory, pictureName);
-        return Uri.fromFile(imageFile);// variable con uri direccion
-    }
     @Override
     protected void onStart() {
         super.onStart();
         ArrayList<Twin> arrayTwin = new ArrayList<>();
-        {
-            FlowManager.init(new FlowConfig.Builder(getApplicationContext())
-                    .openDatabasesOnInit(true)
-                    .build());
+        //Retornamos la lista de twins
+        List<Twin> twins = SQLite.select().from(Twin.class).queryList();
+
+        for(int i = twins.size()-1; i >= 0 ; i--){
+            // Vamos agregando al Twin
+            arrayTwin.add(twins.get(i));
+        }
+
+        //instanciamos el adapter para agregarle el array de pic
+        final ImageListAdapter adapter = new ImageListAdapter(this, arrayTwin);
+        dataList.setAdapter(adapter);
 
         }
-        {
-
-            //Retornamos la lista de twins
-            List<Twin> twins = SQLite.select().from(Twin.class).queryList();
-
-            for(int i = twins.size()-1; i >= 0 ; i--){
-
-                //Vemos si realmente tiene el pic
-                /*String log = "ID:" + twins.get(i).getLocal().getId() + " date: "+twins.get(i).getLocal().getDate()
-                        + " ,Image: " + twins.get(i).getLocal().getUrl();
-
-
-                Log.d("Result: ", log);
-                */
-                // Vamos agregando al Twin
-                arrayTwin.add(twins.get(i));
-
-            }
-
-            final ImageListAdapter adapter = new ImageListAdapter(this, arrayTwin);
-            dataList.setAdapter(adapter);
-
-        }
-    }
 
     /**
-     * Metodo que retirna un array con la latitud y longitus
+     * Metodo que retirna un array con la latitud y longitud
      * @return
      */
     private Double[] getPosicion(){
@@ -294,87 +221,90 @@ public class MainActivity extends AppCompatActivity {
      */
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        //en caso de que la foto efectivamente se saque
         if(resultCode == RESULT_OK){
             if (requestCode == CAMERA_REQUEST){
-//                postPic(ipUrl);
+                MediaScannerConnection.scanFile(this,
+                        new String[]{this.path}, null,
+                        new MediaScannerConnection.OnScanCompletedListener() {
+                            @Override
+                            public void onScanCompleted(String path, Uri uri) {
+                            }
+                        });
+
+                //Parametros del pic
+                String deviceID = DeviceUtils.getDeviceId(getApplicationContext());
+                Long date = getDate();
+                Double[] latlon = getPosicion();
+                Double latitud = latlon [0];
+                Double longitud = latlon[1];
+                Bitmap bm = BitmapFactory.decodeFile(this.path);
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                bm.compress(Bitmap.CompressFormat.JPEG, 90, baos);
+                byte[] b = baos.toByteArray();
+                String encodedImage = Base64.encodeToString(b,Base64.DEFAULT);
+
+                Log.e("EL PATH!:",path);
+
+                //Objeto Pic
+                Pic pic = Pic.builder()
+                        .deviceId(deviceID)
+                        .latitude(latitud)
+                        .longitude(longitud)
+                        .date(date)
+                        .url(path)
+                        .positive(0)
+                        .negative(0)
+                        .warning(0)
+                        .imagen(encodedImage)
+                        .build();
+                log.debug("Se creo el pic");
+                twinServer(pic);
+
             }
         }
 
 
     }
 
-    /*
-    *Metodo que envia un pic al servidor
-   */
-    private void postPic(String url){
-
-        url = url + "/insertar/pic";
-        log.debug(url);
-
-        RequestQueue requestQueue = Volley.newRequestQueue(this);
-
-        //Image full size
-        Bitmap bm = BitmapFactory.decodeFile(getUriPicture().getPath());
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        bm.compress(Bitmap.CompressFormat.JPEG, 70, baos);
-        byte[] file = baos.toByteArray();
-        String image = Base64.encodeToString(file,Base64.DEFAULT);
-
-        Double[] latlon = getPosicion();
-        Double latitud = latlon [0];
-        Double longitud = latlon[1];
-        try {
-            JSONObject jsonBody = new JSONObject();
-            jsonBody.put("idDevice", DeviceUtils.getDeviceId(getApplicationContext()));
-            jsonBody.put("url", getUriPicture().toString());
-            jsonBody.put("date", getDate());
-            jsonBody.put("latitude",latitud);
-            jsonBody.put("longitude",longitud);
-            jsonBody.put("imagen",image);
+    private void twinServer(final Pic pic){
 
 
-            final String mRequestBody = jsonBody.toString();
-            StringRequest stringRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
+            //Metodo para el post
+            WebService.Factory.getInstance().sendPic(pic).enqueue(new Callback<Twin>() {
+
+                //Respuesta positiva desde el servidor
                 @Override
-                public void onResponse(String response) {
-                    Log.i("VOLLEY", response);
-                    log.debug(response.substring(0,2));
-                    log.debug(response.toString());
-                }
-            }, new Response.ErrorListener() {
-                @Override
-                public void onErrorResponse(VolleyError error) {
-                    Log.e("VOLLEY", error.toString());
-                }
-            }) {
-                @Override
-                public byte[] getBody() throws AuthFailureError {
-                    try {
-                        return mRequestBody == null ? null : mRequestBody.getBytes("utf-8");
-                    } catch (UnsupportedEncodingException uee) {
-                        VolleyLog.wtf("Unsupported Encoding while trying to get the bytes of %s using %s", mRequestBody, "utf-8");
-                        return null;
-                    }
+                public void onResponse(Call<Twin> call, Response<Twin> response) {
+
+                    //Obtenemos el pic remoto
+                    final Pic picRemoto = response.body().getRemote();
+                    Log.e("PicRemoto!",picRemoto.getUrl());
+                    picRemoto.save();
+
+                    //Obtenemos el pic local
+                    final Pic picLocal = response.body().getLocal();
+                    Log.e("Pic!",picLocal.getUrl());
+                    picLocal.save();
+
+                    //agregamos los pic local y remoto en un Twin
+                    final Twin twin = Twin.builder()
+                            .local(picLocal)
+                            .remote(picRemoto)
+                            .build();
+
+                    twin.save();
                 }
 
                 @Override
-                protected Response<String> parseNetworkResponse(NetworkResponse response) {
-                    String responseString = "";
-                    if (response != null) {
-                        responseString = String.valueOf(response.statusCode);
-                        // can get more details such as response.headers
-                    }
-                    return Response.success(responseString, HttpHeaderParser.parseCacheHeaders(response));
+                public void onFailure(Call<Twin> call, Throwable t) {
+                    log.debug("Sin Conexion");
                 }
-            };
 
-            requestQueue.add(stringRequest);
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-
+            });
     }
-
 
 
     /**
