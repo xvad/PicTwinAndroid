@@ -25,6 +25,15 @@ public interface WebService {
     @GET("pic/buscar")
     Call<Pic> getPic(@Body Integer id);
 
+    @POST("boton/like")
+    Call<Integer> incrementLikes(@Body Integer id);
+
+    @POST("boton/dislike")
+    Call<Integer> incrementDislike(@Body Integer id);
+
+    @POST("boton/warning")
+    Call<Integer> incrementWarning(@Body Integer id);
+
     /**
      * Metodo necesario para gestionar Retrofit
      */

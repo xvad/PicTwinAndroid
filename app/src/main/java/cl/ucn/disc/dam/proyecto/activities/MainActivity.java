@@ -22,10 +22,9 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ListView;
-import android.widget.ProgressBar;
 import android.support.v7.widget.Toolbar;
 
-import cl.ucn.disc.dam.proyecto.ImageListAdapter;
+import cl.ucn.disc.dam.proyecto.util.ImageListAdapter;
 import cl.ucn.disc.dam.proyecto.R;
 import cl.ucn.disc.dam.proyecto.WebService;
 import cl.ucn.disc.dam.proyecto.domain.Pic;
